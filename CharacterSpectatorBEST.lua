@@ -8,7 +8,6 @@ if not success or not player then
 end
 
 local PlayerGui = player:WaitForChild("PlayerGui")
-
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 
@@ -193,7 +192,6 @@ instructionLabel.TextYAlignment = Enum.TextYAlignment.Top
 instructionLabel.Parent = controlFrame
 
 screenGui.Parent = PlayerGui
-print("Character Spectator: Интерфейс добавлен в PlayerGui")
 
 local headsList = {}
 local selectedHead = nil
@@ -209,7 +207,6 @@ local cameraSmoothness = 0.15
 local cameraFOV = 70
 
 local function findHeads()
-	print("Character Spectator: Поиск голов...")
 	local allHeads = {}
 	local count = 0
 
@@ -229,14 +226,11 @@ local function findHeads()
 	end
 
 	search(game.Workspace)
-	print("Character Spectator: Найдено голов в Workspace:", count)
 
 	return allHeads
 end
 
 local function updateList()
-	print("Character Spectator: Обновление списка")
-
 	for _, child in ipairs(listFrame:GetChildren()) do
 		if child:IsA("Frame") then
 			child:Destroy()
@@ -275,8 +269,6 @@ local function updateList()
 		nameLabel.Parent = itemFrame
 
 		itemButton.MouseButton1Click:Connect(function()
-			print("Character Spectator: Выбрана голова", headData.FullPath)
-
 			for _, item in ipairs(listFrame:GetChildren()) do
 				if item:IsA("Frame") then
 					item.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
@@ -310,7 +302,6 @@ local function updateList()
 end
 
 local function setHeadAccessoriesTransparency(head, transparency)
-	print("Character Spectator: Установка прозрачности:", transparency)
 	if transparency == 1 then
 		originalTransparency = {}
 	end
@@ -340,14 +331,13 @@ end
 
 local function toggleUI()
 	uiVisible = not uiVisible
-	mainFrame.Visible = uiVisible
-
+	screenGui.Enabled = false
+	
 	if uiVisible then
+		screenGui.Enabled = true
 		toggleUIButton.Text = "−"
-		print("Character Spectator: Интерфейс показан")
 	else
 		toggleUIButton.Text = "+"
-		print("Character Spectator: Интерфейс скрыт")
 	end
 end
 
@@ -406,33 +396,9 @@ local function setupKeyboardControls()
 	end)
 end
 
-local function smoothCameraFollow()
-	local camera = workspace.CurrentCamera
-	local head = selectedHead.Head
-
-	if not head or not head.Parent then
-		return
-	end
-
-	local currentCameraCFrame = camera.CFrame
-
-	while cameraAttached and head and head.Parent do
-		RunService.RenderStepped:Wait()
-		
-		local headCFrame = head.CFrame
-		local targetPosition = headCFrame.Position + cameraOffset
-		local targetCFrame = CFrame.new(targetPosition) * headCFrame.Rotation
-
-		local newCFrame = currentCameraCFrame:Lerp(targetCFrame, cameraSmoothness)
-		camera.CFrame = newCFrame
-		currentCameraCFrame = newCFrame
-	end
-end
-
 local function attachCameraToHead()
 	if not selectedHead then
 		infoText.Text = "Сначала выберите голову из списка"
-		print("Character Spectator: Ошибка - не выбрана голова")
 		return
 	end
 
@@ -442,14 +408,11 @@ local function attachCameraToHead()
 		return
 	end
 
-	print("Character Spectator: Прикрепление камеры к", head:GetFullName())
-
 	local camera = workspace.CurrentCamera
 	originalCameraType = camera.CameraType
 	originalCameraFOV = camera.FieldOfView
 
 	camera.CameraType = Enum.CameraType.Scriptable
-
 	camera.FieldOfView = cameraFOV
 
 	setHeadAccessoriesTransparency(head, 1)
@@ -473,26 +436,25 @@ local function attachCameraToHead()
 	end
 
 	cameraConnection = RunService.RenderStepped:Connect(function()
-		if cameraAttached then
-			smoothCameraFollow()
-		else
-			cameraConnection:Disconnect()
+		if not cameraAttached or not head or not head.Parent then
+			return
 		end
-	end)
-
-	local escConnection
-	escConnection = UserInputService.InputBegan:Connect(function(input, gameProcessed)
-		if input.KeyCode == Enum.KeyCode.Escape and cameraAttached then
-			detachCamera()
-			if escConnection then
-				escConnection:Disconnect()
-			end
-		end
+		
+		local headCFrame = head.CFrame
+		
+		-- Простое следование камеры за головой без сложной математики
+		local targetPosition = headCFrame.Position + 
+							  headCFrame.LookVector * cameraOffset.Z + 
+							  headCFrame.RightVector * cameraOffset.X + 
+							  headCFrame.UpVector * cameraOffset.Y
+		
+		local lookAtPoint = headCFrame.Position + headCFrame.LookVector
+		
+		camera.CFrame = CFrame.new(targetPosition, lookAtPoint)
 	end)
 end
 
 local function detachCamera()
-	print("Character Spectator: Отсоединение камеры")
 	cameraAttached = false
 
 	if cameraConnection then
@@ -508,12 +470,10 @@ local function detachCamera()
 
 	if originalCameraFOV then
 		camera.FieldOfView = originalCameraFOV
-		originalCameraFOV = nil
 	end
 
 	if originalCameraType then
 		camera.CameraType = originalCameraType
-		originalCameraType = nil
 	else
 		camera.CameraType = Enum.CameraType.Custom
 	end
@@ -521,31 +481,16 @@ local function detachCamera()
 	attachCameraButton.Visible = true
 	detachCameraButton.Visible = false
 	controlFrame.Visible = false
-
 	infoText.Text = "Камера отсоединена"
 end
 
-searchButton.MouseButton1Click:Connect(function()
-	updateList()
-end)
-
-attachCameraButton.MouseButton1Click:Connect(function()
-	attachCameraToHead()
-end)
-
-detachCameraButton.MouseButton1Click:Connect(function()
-	detachCamera()
-end)
-
-toggleUIButton.MouseButton1Click:Connect(function()
-	toggleUI()
-end)
+searchButton.MouseButton1Click:Connect(updateList)
+attachCameraButton.MouseButton1Click:Connect(attachCameraToHead)
+detachCameraButton.MouseButton1Click:Connect(detachCamera)
+toggleUIButton.MouseButton1Click:Connect(toggleUI)
 
 wait(2)
 updateList()
-
-print("Character Spectator: загружен")
-infoText.Text = "Выберите голову из списка."
 
 setupKeyboardControls()
 

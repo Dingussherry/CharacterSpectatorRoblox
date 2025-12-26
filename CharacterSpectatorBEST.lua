@@ -206,6 +206,8 @@ local cameraOffset = Vector3.new(0, 0, 0)
 local cameraSmoothness = 0.15
 local cameraFOV = 70
 
+local heldKeys = {}
+
 local function findHeads()
 	local allHeads = {}
 	local count = 0
@@ -351,48 +353,12 @@ local function setupKeyboardControls()
 		end
 		
 		if not cameraAttached then return end
-
-		local step = 0.1
-		local fovStep = 5
-		local changed = false
-
-		if input.KeyCode == Enum.KeyCode.Q then
-			cameraOffset = Vector3.new(cameraOffset.X - step, cameraOffset.Y, cameraOffset.Z)
-			changed = true
-		elseif input.KeyCode == Enum.KeyCode.E then
-			cameraOffset = Vector3.new(cameraOffset.X + step, cameraOffset.Y, cameraOffset.Z)
-			changed = true
-		elseif input.KeyCode == Enum.KeyCode.R then
-			cameraOffset = Vector3.new(cameraOffset.X, cameraOffset.Y + step, cameraOffset.Z)
-			changed = true
-		elseif input.KeyCode == Enum.KeyCode.F then
-			cameraOffset = Vector3.new(cameraOffset.X, cameraOffset.Y - step, cameraOffset.Z)
-			changed = true
-		elseif input.KeyCode == Enum.KeyCode.T then
-			cameraOffset = Vector3.new(cameraOffset.X, cameraOffset.Y, cameraOffset.Z + step)
-			changed = true
-		elseif input.KeyCode == Enum.KeyCode.G then
-			cameraOffset = Vector3.new(cameraOffset.X, cameraOffset.Y, cameraOffset.Z - step)
-			changed = true
-		elseif input.KeyCode == Enum.KeyCode.Z then
-			cameraSmoothness = math.clamp(cameraSmoothness - 0.05, 0.05, 1.0)
-			changed = true
-		elseif input.KeyCode == Enum.KeyCode.X then
-			cameraSmoothness = math.clamp(cameraSmoothness + 0.05, 0.05, 1.0)
-			changed = true
-		elseif input.KeyCode == Enum.KeyCode.U then
-			cameraFOV = math.clamp(cameraFOV - fovStep, 10, 120)
-			changed = true
-			workspace.CurrentCamera.FieldOfView = cameraFOV
-		elseif input.KeyCode == Enum.KeyCode.I then
-			cameraFOV = math.clamp(cameraFOV + fovStep, 10, 120)
-			changed = true
-			workspace.CurrentCamera.FieldOfView = cameraFOV
-		end
-
-		if changed then
-			updateControlDisplay()
-		end
+		
+		heldKeys[input.KeyCode] = true
+	end)
+	
+	UserInputService.InputEnded:Connect(function(input)
+		heldKeys[input.KeyCode] = nil
 	end)
 end
 
@@ -435,14 +401,77 @@ local function attachCameraToHead()
 		cameraConnection:Disconnect()
 	end
 
+	local lastUpdate = tick()
+	
 	cameraConnection = RunService.RenderStepped:Connect(function()
 		if not cameraAttached or not head or not head.Parent then
 			return
 		end
 		
+		local currentTime = tick()
+		local deltaTime = math.min(currentTime - lastUpdate, 0.1)
+		lastUpdate = currentTime
+		
+		local changed = false
+		
+		if heldKeys[Enum.KeyCode.Q] then
+			cameraOffset = Vector3.new(cameraOffset.X - deltaTime, cameraOffset.Y, cameraOffset.Z)
+			changed = true
+		end
+		
+		if heldKeys[Enum.KeyCode.E] then
+			cameraOffset = Vector3.new(cameraOffset.X + deltaTime, cameraOffset.Y, cameraOffset.Z)
+			changed = true
+		end
+		
+		if heldKeys[Enum.KeyCode.R] then
+			cameraOffset = Vector3.new(cameraOffset.X, cameraOffset.Y + deltaTime, cameraOffset.Z)
+			changed = true
+		end
+		
+		if heldKeys[Enum.KeyCode.F] then
+			cameraOffset = Vector3.new(cameraOffset.X, cameraOffset.Y - deltaTime, cameraOffset.Z)
+			changed = true
+		end
+		
+		if heldKeys[Enum.KeyCode.T] then
+			cameraOffset = Vector3.new(cameraOffset.X, cameraOffset.Y, cameraOffset.Z + deltaTime)
+			changed = true
+		end
+		
+		if heldKeys[Enum.KeyCode.G] then
+			cameraOffset = Vector3.new(cameraOffset.X, cameraOffset.Y, cameraOffset.Z - deltaTime)
+			changed = true
+		end
+		
+		if heldKeys[Enum.KeyCode.Z] then
+			cameraSmoothness = math.clamp(cameraSmoothness - deltaTime * 0.5, 0.05, 1.0)
+			changed = true
+		end
+		
+		if heldKeys[Enum.KeyCode.X] then
+			cameraSmoothness = math.clamp(cameraSmoothness + deltaTime * 0.5, 0.05, 1.0)
+			changed = true
+		end
+		
+		if heldKeys[Enum.KeyCode.U] then
+			cameraFOV = math.clamp(cameraFOV - deltaTime * 30, 10, 120)
+			workspace.CurrentCamera.FieldOfView = cameraFOV
+			changed = true
+		end
+		
+		if heldKeys[Enum.KeyCode.I] then
+			cameraFOV = math.clamp(cameraFOV + deltaTime * 30, 10, 120)
+			workspace.CurrentCamera.FieldOfView = cameraFOV
+			changed = true
+		end
+		
+		if changed then
+			updateControlDisplay()
+		end
+		
 		local headCFrame = head.CFrame
 		
-		-- Простое следование камеры за головой без сложной математики
 		local targetPosition = headCFrame.Position + 
 							  headCFrame.LookVector * cameraOffset.Z + 
 							  headCFrame.RightVector * cameraOffset.X + 
@@ -482,6 +511,10 @@ local function detachCamera()
 	detachCameraButton.Visible = false
 	controlFrame.Visible = false
 	infoText.Text = "Камера отсоединена"
+	
+	for key in pairs(heldKeys) do
+		heldKeys[key] = nil
+	end
 end
 
 searchButton.MouseButton1Click:Connect(updateList)

@@ -276,7 +276,7 @@ local function updateList()
 					item.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 				end
 			end
-			
+
 			itemFrame.BackgroundColor3 = Color3.fromRGB(0, 120, 215)
 			selectedHead = headData
 
@@ -334,7 +334,7 @@ end
 local function toggleUI()
 	uiVisible = not uiVisible
 	screenGui.Enabled = false
-	
+
 	if uiVisible then
 		screenGui.Enabled = true
 		toggleUIButton.Text = "−"
@@ -351,12 +351,12 @@ local function setupKeyboardControls()
 			toggleUI()
 			return
 		end
-		
+
 		if not cameraAttached then return end
-		
+
 		heldKeys[input.KeyCode] = true
 	end)
-	
+
 	UserInputService.InputEnded:Connect(function(input)
 		heldKeys[input.KeyCode] = nil
 	end)
@@ -402,83 +402,83 @@ local function attachCameraToHead()
 	end
 
 	local lastUpdate = tick()
-	
+
 	cameraConnection = RunService.RenderStepped:Connect(function()
 		if not cameraAttached or not head or not head.Parent then
 			return
 		end
-		
+
 		local currentTime = tick()
-		local deltaTime = math.min(currentTime - lastUpdate, 0.1)
+		local deltaTime = math.max(currentTime - lastUpdate, 0.2)
 		lastUpdate = currentTime
-		
+
 		local changed = false
-		
+
 		if heldKeys[Enum.KeyCode.Q] then
 			cameraOffset = Vector3.new(cameraOffset.X - deltaTime, cameraOffset.Y, cameraOffset.Z)
 			changed = true
 		end
-		
+
 		if heldKeys[Enum.KeyCode.E] then
 			cameraOffset = Vector3.new(cameraOffset.X + deltaTime, cameraOffset.Y, cameraOffset.Z)
 			changed = true
 		end
-		
+
 		if heldKeys[Enum.KeyCode.R] then
 			cameraOffset = Vector3.new(cameraOffset.X, cameraOffset.Y + deltaTime, cameraOffset.Z)
 			changed = true
 		end
-		
+
 		if heldKeys[Enum.KeyCode.F] then
 			cameraOffset = Vector3.new(cameraOffset.X, cameraOffset.Y - deltaTime, cameraOffset.Z)
 			changed = true
 		end
-		
+
 		if heldKeys[Enum.KeyCode.T] then
 			cameraOffset = Vector3.new(cameraOffset.X, cameraOffset.Y, cameraOffset.Z + deltaTime)
 			changed = true
 		end
-		
+
 		if heldKeys[Enum.KeyCode.G] then
 			cameraOffset = Vector3.new(cameraOffset.X, cameraOffset.Y, cameraOffset.Z - deltaTime)
 			changed = true
 		end
-		
+
 		if heldKeys[Enum.KeyCode.Z] then
 			cameraSmoothness = math.clamp(cameraSmoothness - deltaTime * 0.5, 0.05, 1.0)
 			changed = true
 		end
-		
+
 		if heldKeys[Enum.KeyCode.X] then
 			cameraSmoothness = math.clamp(cameraSmoothness + deltaTime * 0.5, 0.05, 1.0)
 			changed = true
 		end
-		
+
 		if heldKeys[Enum.KeyCode.U] then
 			cameraFOV = math.clamp(cameraFOV - deltaTime * 30, 10, 120)
 			workspace.CurrentCamera.FieldOfView = cameraFOV
 			changed = true
 		end
-		
+
 		if heldKeys[Enum.KeyCode.I] then
 			cameraFOV = math.clamp(cameraFOV + deltaTime * 30, 10, 120)
 			workspace.CurrentCamera.FieldOfView = cameraFOV
 			changed = true
 		end
-		
+
 		if changed then
 			updateControlDisplay()
 		end
-		
+
 		local headCFrame = head.CFrame
-		
+
 		local targetPosition = headCFrame.Position + 
-							  headCFrame.LookVector * cameraOffset.Z + 
-							  headCFrame.RightVector * cameraOffset.X + 
-							  headCFrame.UpVector * cameraOffset.Y
-		
+			headCFrame.LookVector * cameraOffset.Z + 
+			headCFrame.RightVector * cameraOffset.X + 
+			headCFrame.UpVector * cameraOffset.Y
+
 		local lookAtPoint = headCFrame.Position + headCFrame.LookVector
-		
+
 		camera.CFrame = CFrame.new(targetPosition, lookAtPoint)
 	end)
 end
@@ -511,7 +511,7 @@ local function detachCamera()
 	detachCameraButton.Visible = false
 	controlFrame.Visible = false
 	infoText.Text = "Камера отсоединена"
-	
+
 	for key in pairs(heldKeys) do
 		heldKeys[key] = nil
 	end
